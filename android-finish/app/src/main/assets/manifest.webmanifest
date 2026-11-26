@@ -1,0 +1,20 @@
+{
+  "name": "KAIROS FINISH V11 - demo offline",
+  "short_name": "KAIROS FINISH",
+  "description": "Demo con tempi simulati, non ancora collegata alla Heltec",
+  "id": "./index.html",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#06182b",
+  "theme_color": "#06182b",
+  "icons": [
+    {
+      "src": "./kairos-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
