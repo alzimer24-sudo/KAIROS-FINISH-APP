@@ -11,10 +11,10 @@
   "theme_color": "#06182b",
   "icons": [
     {
-      "src": "./kairos-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "./kairos-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
