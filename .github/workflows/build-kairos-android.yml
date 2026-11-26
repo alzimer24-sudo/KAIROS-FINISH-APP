@@ -16,11 +16,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
-      - name: Build debug APK
+      - name: Build Android debug APK
         run: gradle -p android-finish --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
         with:
