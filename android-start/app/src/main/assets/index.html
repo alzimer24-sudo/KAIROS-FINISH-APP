@@ -30,33 +30,35 @@ button.green{background:#12e779;border-color:#fff;color:#000}button:disabled,but
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-let bib=0,nonce=0,found=false,confirmed=false,confirmPending=false,confirmAt=0,connected=false,link=false,lastPoll=0;
+let bib=0,nonce=0,found=false,confirmed=false,confirmPending=false,confirmAt=0,connected=false,link=false,lastPoll=0,freshLookup=false;
 function stopSignal(label){$('signal').className='signal';$('signal').textContent='STOP';$('state').textContent=label;$('countdown').className='count';$('countdown').textContent='--';}
-function controls(){ $('search').disabled=!connected||!link; $('confirm').disabled=!connected||!link||!found||confirmed||confirmPending; }
-function clearAthlete(label){bib=0;nonce=0;found=false;confirmed=false;confirmPending=false;$('name').textContent='—';$('athleteStatus').textContent=label;controls();}
+function controls(){ $('search').disabled=!connected||!link; $('confirm').disabled=!connected||!link||!found||!freshLookup||confirmed||confirmPending; }
+function clearAthlete(label){bib=0;nonce=0;found=false;freshLookup=false;confirmed=false;confirmPending=false;$('name').textContent='—';$('athleteStatus').textContent=label;controls();}
 function request(action,b,n){if(window.KairosStart)KairosStart.request(action,String(b||''),String(n||''));}
 window.KAIROS_ONERROR=function(message){
  $('connection').className='status';$('connection').textContent='SCOLLEGATO';
- connected=false;link=false;clearAthlete('ATTESA COLLEGAMENTO');stopSignal('ATTESA COLLEGAMENTO');
+ connected=false;link=false;freshLookup=false;confirmPending=false;controls();$('athleteStatus').textContent=found?'NOME MEMORIZZATO · DA VERIFICARE':'ATTESA COLLEGAMENTO';stopSignal('ATTESA COLLEGAMENTO');
 };
 window.KAIROS_ONDATA=function(raw){
  let d;try{d=JSON.parse(raw);}catch(_){window.KAIROS_ONERROR('Formato errato');return;}
  if(!d||typeof d.ready!=='boolean'){window.KAIROS_ONERROR('Formato errato');return;}
  lastPoll=Date.now();connected=true;link=d.link_ok===true;
  $('connection').className=link?'status ok':'status';$('connection').textContent=link?'COLLEGATO':'ATTESA FINISH';
- if(!link){clearAthlete('ATTESA FINISH');}
+ freshLookup=false;
+ if(!link){confirmPending=false;$('athleteStatus').textContent=found?'NOME MEMORIZZATO · DA VERIFICARE':'ATTESA FINISH';}
  else if(bib>0&&d.lookup&&Number(d.lookup.nonce)===nonce&&Number(d.lookup.bib)===bib){
   if(d.lookup.status==='found'&&typeof d.lookup.name==='string'&&d.lookup.name.trim()){
-   found=true;$('name').textContent=d.lookup.name.slice(0,100);
+   found=true;freshLookup=true;$('name').textContent=d.lookup.name.slice(0,100);
    $('athleteStatus').textContent=confirmed?'ATLETA CONFERMATO':confirmPending?'CONFERMA IN CORSO':'ATLETA TROVATO';
   }else if(d.lookup.status==='not_found'){
    found=false;confirmed=false;confirmPending=false;$('name').textContent='—';$('athleteStatus').textContent='PETTORALE NON TROVATO';
   }
  }
- if(link&&bib>0&&found){
+ if(link&&bib>0&&freshLookup){
   if(Number(d.confirmed_bib)===bib&&Number(d.confirmed_nonce)===nonce){confirmed=true;confirmPending=false;$('athleteStatus').textContent='✓ ATLETA CONFERMATO';}
   else if(confirmed){confirmed=false;$('athleteStatus').textContent='ATLETA TROVATO';}
  }
+ if(link&&found&&!freshLookup){$('athleteStatus').textContent='NOME MEMORIZZATO · CERCA DI NUOVO';}
  const states={recall:'RICHIAMO ATLETA',idle:'ATTESA',locked:'ATLETA IN PISTA',ready:'ATTESA VIA LIBERA',countdown:'PREPARARSI',go:'PARTENZA AUTORIZZATA',sent:'PARTENZA TRASMESSA'};
  const go=d.ready===true&&link&&d.stage==='go';
  const countdown=d.ready===true&&link&&d.stage==='countdown';
@@ -80,11 +82,11 @@ $('bib').addEventListener('input',()=>clearAthlete('PREMI CERCA ATLETA'));
 $('search').onclick=function(){
  if(!connected||!link)return;
  const n=Number($('bib').value);if(!Number.isSafeInteger(n)||n<1||n>99999){alert('Pettorale non valido');return;}
- bib=n;nonce=Date.now()%1000000000||1;found=false;confirmed=false;confirmPending=false;
+ bib=n;nonce=Date.now()%1000000000||1;found=false;freshLookup=false;confirmed=false;confirmPending=false;
  $('name').textContent='—';$('athleteStatus').textContent='RICERCA IN CORSO';controls();request('lookup',bib,nonce);$('bib').blur();
 };
 $('confirm').onclick=function(){
- if(!connected||!link||!found||confirmed||confirmPending)return;
+ if(!connected||!link||!found||!freshLookup||confirmed||confirmPending)return;
  confirmPending=true;confirmAt=Date.now();controls();$('athleteStatus').textContent='CONFERMA IN CORSO';request('confirm',bib,nonce);
 };
 setInterval(()=>request('status'),1200);
