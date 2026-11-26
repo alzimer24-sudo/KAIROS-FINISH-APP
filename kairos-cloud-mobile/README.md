@@ -11,6 +11,13 @@ Questa cartella contiene **un'app React Native/Expo**, NON un sito Web. Non sost
 - Una membership del gruppo autorizza automaticamente tutti gli allenamenti di quel gruppo. La rimozione revoca anche la lettura dello storico.
 - L'account utente non può auto-iscriversi ai gruppi.
 
+## Gestione gruppi in app (codice predisposto)
+Il proprietario/amministratore vede **GESTISCI GRUPPI E UTENTI**, può creare gruppi e autorizzare o revocare un account **già registrato**. Le operazioni passano per funzioni SQL protette che verificano il ruolo sullo sci club. L'utente normale non vede il pannello di amministrazione.
+
+**Attivazione sul progetto Supabase esistente:** dopo che `schema.sql` è stato eseguito e l'owner è stato creato, eseguire *una sola volta* `supabase/02_admin_groups.sql` tramite SQL Editor. Non rieseguire `schema.sql`: le policy iniziali non sono idempotenti. È necessario collaudare questi permessi con utenti fittizi di due sci club differenti prima della distribuzione.
+
+**Limite attuale:** aggiungere un utente via email funziona solo per account già creati in Authentication. L'invito con email e creazione automatica dell'account richiede ancora un backend autorizzato.
+
 ## Ancora da realizzare
 - Collegamento reale al progetto Supabase del proprietario e creazione controllata del primo amministratore.
 - Inviti, gestione gruppi, esportazione e sincronizzazione dal tablet KAIROS FINISH.
