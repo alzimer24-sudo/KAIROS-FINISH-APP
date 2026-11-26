@@ -14,8 +14,7 @@ button.green{background:#12e779;border-color:#fff;color:#000}button:disabled,but
 .status{font-size:12px;font-weight:800;color:#ffdb56;text-align:right}.status.ok{color:#7df6ad}
 .signal{border:2px solid #fff;border-radius:10px;padding:10px;text-align:center;background:#a51b25;color:#fff;font-size:clamp(32px,9vw,54px);font-weight:1000;line-height:1.1}
 .signal.go{background:#12e779;color:#000}.signal.wait{background:#705000;color:#fff}
-.state{text-align:center;font-size:15px;font-weight:850;margin-top:5px}.count{font-size:clamp(60px,20vw,120px);font-weight:1000;color:#ffe600;text-align:center;line-height:1.05}.count:empty{display:none}
-.result{font-size:clamp(32px,9vw,64px);font-weight:1000;text-align:center;font-variant-numeric:tabular-nums}.resultInfo{text-align:center;font-size:12px;color:#ffe600;margin:2px 0}
+.state{text-align:center;font-size:15px;font-weight:850;margin-top:5px}.count{font-size:clamp(90px,30vw,190px);font-weight:1000;color:#ffe600;text-align:center;line-height:1.05;font-variant-numeric:tabular-nums}.count:empty{display:none}
 </style></head><body>
 <header><h1>KAIROS START</h1><span class="status" id="connection" role="status">SCOLLEGATO</span></header>
 <main>
@@ -26,7 +25,6 @@ button.green{background:#12e779;border-color:#fff;color:#000}button:disabled,but
 <button id="confirm" class="green" disabled>CONFERMA ATLETA</button>
 </section>
 <section><h2>PARTENZA</h2><div id="signal" class="signal" role="status">STOP</div><div id="state" class="state">ATTESA COLLEGAMENTO</div><div class="count" id="countdown"></div></section>
-<section><h2>ULTIMO TEMPO</h2><div class="result" id="result">—</div><p class="resultInfo" id="resultInfo">Tempo di prova</p></section>
 </main>
 <script>
 (function(){
@@ -40,7 +38,6 @@ function request(action,b,n){if(window.KairosStart)KairosStart.request(action,St
 window.KAIROS_ONERROR=function(message){
  $('connection').className='status';$('connection').textContent='SCOLLEGATO';
  connected=false;link=false;clearAthlete('ATTESA COLLEGAMENTO');stopSignal('ATTESA COLLEGAMENTO');
- $('resultInfo').textContent='Tempo non aggiornato';
 };
 window.KAIROS_ONDATA=function(raw){
  let d;try{d=JSON.parse(raw);}catch(_){window.KAIROS_ONERROR('Formato errato');return;}
@@ -60,15 +57,14 @@ window.KAIROS_ONDATA=function(raw){
   if(Number(d.confirmed_bib)===bib&&Number(d.confirmed_nonce)===nonce){confirmed=true;confirmPending=false;$('athleteStatus').textContent='✓ ATLETA CONFERMATO';}
   else if(confirmed){confirmed=false;$('athleteStatus').textContent='ATLETA TROVATO';}
  }
- const states={idle:'ATTESA',locked:'ATLETA IN PISTA',ready:'ATTESA VIA LIBERA',countdown:'PREPARARSI',go:'PARTENZA AUTORIZZATA',sent:'PARTENZA TRASMESSA'};
+ const states={recall:'RICHIAMO ATLETA',idle:'ATTESA',locked:'ATLETA IN PISTA',ready:'ATTESA VIA LIBERA',countdown:'PREPARARSI',go:'PARTENZA AUTORIZZATA',sent:'PARTENZA TRASMESSA'};
  const go=d.ready===true&&link&&d.stage==='go';
  const countdown=d.ready===true&&link&&d.stage==='countdown';
- $('signal').className=go?'signal go':countdown?'signal wait':'signal';
- $('signal').textContent=go?'VIA':countdown?'ATTENDI':'STOP';
+ const recall=d.ready===true&&link&&d.stage==='recall';
+ $('signal').className=go?'signal go':(countdown||recall)?'signal wait':'signal';
+ $('signal').textContent=go?'VIA':(countdown||recall)?'ATTENDI':'STOP';
  $('state').textContent=!link?'ATTESA FINISH':!d.ready?'NON PRONTO':(states[d.stage]||'ATTESA FINISH');
  $('countdown').textContent=countdown&&Number.isInteger(d.remaining_sec)&&d.remaining_sec>=0?String(d.remaining_sec):'';
- if(Number.isSafeInteger(d.elapsed_us)&&d.elapsed_us>0){$('result').textContent=(d.elapsed_us/1000000).toFixed(3)+' s';$('resultInfo').textContent=link?'Tempo di prova':'Ultimo dato ricevuto';}
- else{$('result').textContent='—';$('resultInfo').textContent='Tempo di prova';}
  controls();
 };
 $('bib').addEventListener('input',()=>clearAthlete('PREMI CERCA ATLETA'));
