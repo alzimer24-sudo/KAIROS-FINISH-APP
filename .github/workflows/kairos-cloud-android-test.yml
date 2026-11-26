@@ -1,0 +1,103 @@
+name: KAIROS CLOUD - Android APK di prova
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kairos-cloud-android-test
+  cancel-in-progress: false
+
+jobs:
+  android:
+    name: Compila APK Android KAIROS CLOUD
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: kairos-cloud-mobile
+    env:
+      CI: "1"
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.KAIROS_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.KAIROS_SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Scarica codice
+        uses: actions/checkout@v4
+
+      - name: Controlla configurazione (senza esporre le chiavi)
+        shell: bash
+        run: |
+          if [[ ! "${EXPO_PUBLIC_SUPABASE_URL}" =~ ^https://[a-z0-9-]+\.supabase\.co/?$ ]]; then
+            echo "::error::Manca KAIROS_SUPABASE_URL oppure URL non valido. Impostare il segreto nelle Settings del repository."
+            exit 1
+          fi
+          if [[ "${EXPO_PUBLIC_SUPABASE_ANON_KEY}" != sb_publishable_* && "${EXPO_PUBLIC_SUPABASE_ANON_KEY}" != eyJ* ]]; then
+            echo "::error::Manca KAIROS_SUPABASE_PUBLISHABLE_KEY oppure non e' una chiave publishable/anon."
+            exit 1
+          fi
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Installa dipendenze
+        run: npm install --no-audit --no-fund
+
+      - name: Genera progetto Android
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Compila APK di test con JavaScript incorporato
+        shell: bash
+        run: |
+          # La build release incorpora il JS: non richiede Metro sul telefono.
+          # Firma di DEBUG per uso di prova, NON per la distribuzione agli sci club.
+          # Il file nativo viene generato in CI e non modificato nel repository.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle")
+          s = p.read_text()
+          marker = "release {"
+          if marker not in s:
+              raise SystemExit("Non trovo il blocco release in build.gradle")
+          start = s.index(marker) + len(marker)
+          stop = s.find("\n        }",start)
+          if stop < 0:
+              raise SystemExit("Non posso identificare il blocco release")
+          block = s[start:stop]
+          if "signingConfig" not in block:
+              s = s[:start] + "\n            signingConfig signingConfigs.debug" + s[start:]
+              p.write_text(s)
+          PY
+          chmod +x android/gradlew
+          cd android
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verifica APK firmato
+        shell: bash
+        run: |
+          APK=$(find android/app/build/outputs/apk/release -type f -name '*.apk' | head -n 1)
+          test -n "$APK" || { echo "::error::APK non trovato"; exit 1; }
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)
+          "$APKSIGNER" verify --verbose "$APK"
+          mkdir -p build-output
+          cp "$APK" build-output/KAIROS-CLOUD-TEST.apk
+
+      - name: Consegna APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: KAIROS-CLOUD-TEST-APK
+          path: kairos-cloud-mobile/build-output/KAIROS-CLOUD-TEST.apk
+          retention-days: 7
+          if-no-files-found: error
