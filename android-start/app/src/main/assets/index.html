@@ -14,7 +14,7 @@ button.green{background:#12e779;border-color:#fff;color:#000}button:disabled,but
 .status{font-size:12px;font-weight:800;color:#ffdb56;text-align:right}.status.ok{color:#7df6ad}
 .signal{border:2px solid #fff;border-radius:10px;padding:10px;text-align:center;background:#a51b25;color:#fff;font-size:clamp(32px,9vw,54px);font-weight:1000;line-height:1.1}
 .signal.go{background:#12e779;color:#000}.signal.wait{background:#705000;color:#fff}
-.state{text-align:center;font-size:15px;font-weight:850;margin-top:5px}.count{font-size:clamp(90px,30vw,190px);font-weight:1000;color:#ffe600;text-align:center;line-height:1.05;font-variant-numeric:tabular-nums}.count:empty{display:none}
+.state{text-align:center;font-size:15px;font-weight:850;margin-top:5px}.count{font-size:clamp(90px,30vw,190px);font-weight:1000;color:#ffe600;text-align:center;line-height:1.05;font-variant-numeric:tabular-nums}.count{min-height:1.05em}.count.word{font-size:clamp(54px,17vw,100px)}.count-label{text-align:center;font-size:14px;color:#ffe600;font-weight:900;margin-top:8px}
 </style></head><body>
 <header><h1>KAIROS START</h1><span class="status" id="connection" role="status">SCOLLEGATO</span></header>
 <main>
@@ -24,14 +24,14 @@ button.green{background:#12e779;border-color:#fff;color:#000}button:disabled,but
 <div class="athlete"><div class="label">NOME ATLETA</div><div id="name" class="name" aria-live="polite">—</div><div id="athleteStatus" class="athlete-status">ATTESA PETTORALE</div></div>
 <button id="confirm" class="green" disabled>CONFERMA ATLETA</button>
 </section>
-<section><h2>PARTENZA</h2><div id="signal" class="signal" role="status">STOP</div><div id="state" class="state">ATTESA COLLEGAMENTO</div><div class="count" id="countdown"></div></section>
+<section><h2>PARTENZA</h2><div id="signal" class="signal" role="status">STOP</div><div id="state" class="state">ATTESA COLLEGAMENTO</div><div class="count-label">COUNTDOWN · SECONDI</div><div class="count" id="countdown">--</div></section>
 </main>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
 let bib=0,nonce=0,found=false,confirmed=false,confirmPending=false,confirmAt=0,connected=false,link=false,lastPoll=0;
-function stopSignal(label){$('signal').className='signal';$('signal').textContent='STOP';$('state').textContent=label;$('countdown').textContent='';}
+function stopSignal(label){$('signal').className='signal';$('signal').textContent='STOP';$('state').textContent=label;$('countdown').className='count';$('countdown').textContent='--';}
 function controls(){ $('search').disabled=!connected||!link; $('confirm').disabled=!connected||!link||!found||confirmed||confirmPending; }
 function clearAthlete(label){bib=0;nonce=0;found=false;confirmed=false;confirmPending=false;$('name').textContent='—';$('athleteStatus').textContent=label;controls();}
 function request(action,b,n){if(window.KairosStart)KairosStart.request(action,String(b||''),String(n||''));}
@@ -64,7 +64,16 @@ window.KAIROS_ONDATA=function(raw){
  $('signal').className=go?'signal go':(countdown||recall)?'signal wait':'signal';
  $('signal').textContent=go?'VIA':(countdown||recall)?'ATTENDI':'STOP';
  $('state').textContent=!link?'ATTESA FINISH':!d.ready?'NON PRONTO':(states[d.stage]||'ATTESA FINISH');
- $('countdown').textContent=countdown&&Number.isInteger(d.remaining_sec)&&d.remaining_sec>=0?String(d.remaining_sec):'';
+ const duration=Number.isInteger(d.countdown_sec)&&d.countdown_sec>0&&d.countdown_sec<=300?d.countdown_sec:15;
+ let display='--';
+ if(d.ready===true&&link){
+  if(go)display='VIA';
+  else if(countdown)display=Number.isInteger(d.remaining_sec)&&d.remaining_sec>=0&&d.remaining_sec<=300?String(d.remaining_sec):'--';
+  else if(d.stage==='locked'||d.stage==='sent')display='STOP';
+  else if(recall||d.stage==='idle'||d.stage==='ready')display=String(duration);
+ }
+ $('countdown').className=display==='VIA'||display==='STOP'?'count word':'count';
+ $('countdown').textContent=display;
  controls();
 };
 $('bib').addEventListener('input',()=>clearAthlete('PREMI CERCA ATLETA'));
