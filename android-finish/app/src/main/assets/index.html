@@ -369,6 +369,85 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
  const demo=(restored && Array.isArray(restored.roster) && Array.isArray(restored.runs))
    ? {...restored,presence:{start:false,finish:false}}
    : {roster:REAL?[]:roster,runs:REAL?[]:initial,mode:'training',armed:null,min_start_gap_sec:30,revision:1,presence:{start:false,finish:false}};
+ // Archivio allenamenti separato: lo storico non viene perso cambiando sessione.
+ // Il vecchio archivio V12 viene recuperato come primo allenamento, senza cancellarlo.
+ const TRAININGS_KEY='kairos-finish-training-archive-v1';
+ const localDate=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+ const newTraining=(name,date)=>({id:'training-'+Date.now()+'-'+Math.random().toString(36).slice(2,9),
+   name,date,created_at:new Date().toISOString(),roster:[],runs:[],mode:'training',min_start_gap_sec:30});
+ let trainings=[],activeTrainingId='';
+ try {
+  const saved=JSON.parse(localStorage.getItem(TRAININGS_KEY)||'null');
+  if(saved && Array.isArray(saved.items) && saved.items.length && saved.items.every(t=>t.id&&t.name&&Array.isArray(t.roster)&&Array.isArray(t.runs))){
+   trainings=saved.items;activeTrainingId=saved.activeId;
+  }
+ }catch(_){}
+ if(REAL){
+  if(!trainings.length){
+   const legacy=newTraining('Allenamento precedente',localDate());
+   legacy.roster=demo.roster.slice();legacy.runs=demo.runs.slice();
+   legacy.mode=demo.mode;legacy.min_start_gap_sec=demo.min_start_gap_sec;
+   trainings=[legacy];activeTrainingId=legacy.id;
+  }
+  const first=trainings.find(t=>t.id===activeTrainingId)||trainings[0];
+  activeTrainingId=first.id;
+  demo.roster=first.roster.slice();demo.runs=first.runs.slice();demo.mode=first.mode;
+  demo.min_start_gap_sec=first.min_start_gap_sec;
+ }
+ function archiveSave(){
+  if(!REAL)return true;
+  const active=trainings.find(t=>t.id===activeTrainingId);
+  if(!active)return false;
+  active.roster=demo.roster.slice();active.runs=demo.runs.slice();
+  active.mode=demo.mode;active.min_start_gap_sec=demo.min_start_gap_sec;
+  try{
+   localStorage.setItem(TRAININGS_KEY,JSON.stringify({version:1,activeId:activeTrainingId,items:trainings}));
+   return true;
+  }catch(_){return false;}
+ }
+ function safeChange(){
+  if(demo.runs.some(r=>r.status==='RUNNING')){alert('Concludi o annulla prima la prova in corso.');return false;}
+  const h=window.KAIROS_HELTEC;
+  if(h && (h.state===1 || h.ready)){alert('Attendi la fine della prova Heltec prima di cambiare allenamento.');return false;}
+  return true;
+ }
+ function loadTraining(id){
+  if(!REAL || !safeChange())return false;
+  const t=trainings.find(t=>t.id===id);
+  if(!t)return false;
+  if(!archiveSave()){alert('Impossibile salvare l’allenamento attuale. Nessun cambio effettuato.');return false;}
+  activeTrainingId=id;
+  demo.roster=t.roster.slice();demo.runs=t.runs.slice();demo.mode=t.mode||'training';
+  demo.min_start_gap_sec=t.min_start_gap_sec||30;demo.revision++;
+  const h=window.KAIROS_HELTEC;
+  if(h){h.bib=null;h.activeRunId=null;h.seenStart=false;h.ready=false;h.pendingUs=null;}
+  persist();
+  return true;
+ }
+ window.KAIROS_TRAININGS={
+  list:()=>trainings.map(t=>({id:t.id,name:t.name,date:t.date,count:t.runs.length,active:t.id===activeTrainingId})),
+  current:()=>activeTrainingId,
+  create(name,date){
+   if(!REAL||!safeChange())return false;
+   name=String(name||'').trim();if(name.length<2||name.length>120){alert('Nome allenamento: da 2 a 120 caratteri.');return false;}
+   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||Number.isNaN(Date.parse(date))){alert('Data non valida.');return false;}
+   if(!archiveSave()){alert('Impossibile salvare l’allenamento attuale.');return false;}
+   const t=newTraining(name,date);
+   // La lista atleti può essere riutilizzata, i risultati MAI.
+   t.roster=demo.roster.slice();
+   trainings.push(t);return loadTraining(t.id);
+  },
+  select:loadTraining,
+  exportCsv(){
+   archiveSave();
+   const rows=[['session_id','allenamento','data','pettorale','atleta','categoria','manche','stato','tempo_secondi','origine','verificato']];
+   for(const t of trainings)for(const r of t.runs){
+    rows.push([t.id,t.name,t.date,r.bib,r.name,r.cat,r.run_no,r.status,
+     r.elapsed_ms==null?'':(r.elapsed_ms/1000).toFixed(3),r.source||'PROVA',r.verified?'si':'no']);
+   }
+   saveCsv('kairos_archivio_allenamenti.csv',rows);
+  }
+ };
  window.KAIROS_LOCAL={
   real:REAL,
   roster:()=>demo.roster.slice(),
@@ -387,6 +466,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
      roster:demo.roster,runs:demo.runs,mode:demo.mode,armed:null,
      min_start_gap_sec:demo.min_start_gap_sec,revision:demo.revision,presence:{start:false,finish:false}
    }));} catch(e){console.warn('Salvataggio demo non disponibile',e);}
+   if(REAL && !archiveSave())console.warn('Archivio allenamenti non salvato: memoria piena o non disponibile');
  }
  function csvField(val){const s=String(val??'');return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
  function saveCsv(filename,rows){
@@ -425,6 +505,36 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
    return new Response(JSON.stringify(error?{error}:(path==='/api/state'?snap():{state:snap()})),{status:error?409:200,headers:{'Content-Type':'application/json'}});
  };
  window.addEventListener('DOMContentLoaded',()=>{
+  if(REAL){
+   const area=document.querySelector('.finish-kpis');
+   if(area){
+    const box=document.createElement('section');box.className='finish-card';
+    box.innerHTML='<div class="finish-card-head"><h2>📁 ALLENAMENTI OFFLINE</h2><span class="small">Archivio sul tablet · nessun invio CLOUD</span></div>'+
+     '<p class="small">Crea un allenamento per ogni giornata o gruppo. Cambiando allenamento, lo storico resta salvato sul dispositivo.</p>'+
+     '<div class="form-row"><select id="training-select" aria-label="Allenamento attivo"></select><button class="blue" id="training-open" type="button">APRI</button></div>'+
+     '<div class="form-row"><input id="training-name" maxlength="120" placeholder="Nome nuovo allenamento" aria-label="Nome allenamento">'+
+     '<input type="date" id="training-date" aria-label="Data allenamento"><button class="primary" id="training-create" type="button">+ CREA ALLENAMENTO</button></div>'+
+     '<p id="training-active" class="small" role="status"></p><button id="training-export" type="button" class="dark">ESPORTA ARCHIVIO ALLENAMENTI CSV</button>'+
+     '<p class="small">I risultati non vengono eliminati alla creazione di un nuovo allenamento. Conserva una copia CSV di sicurezza.</p>';
+    area.before(box);
+    const select=box.querySelector('#training-select'),date=box.querySelector('#training-date'),name=box.querySelector('#training-name');
+    date.value=localDate();
+    function refreshTraining(){
+     select.innerHTML='';
+     for(const t of window.KAIROS_TRAININGS.list()){
+      const opt=document.createElement('option');
+      opt.value=t.id;opt.textContent=t.date+' · '+t.name+' ('+t.count+' prove)';select.appendChild(opt);
+     }
+     select.value=window.KAIROS_TRAININGS.current();
+     const t=window.KAIROS_TRAININGS.list().find(t=>t.active);
+     box.querySelector('#training-active').textContent=t?'Allenamento attivo: '+t.name+' · '+t.date:'Nessun allenamento';
+    }
+    box.querySelector('#training-open').onclick=()=>{if(window.KAIROS_TRAININGS.select(select.value)){refreshTraining();location.reload();}};
+    box.querySelector('#training-create').onclick=()=>{if(window.KAIROS_TRAININGS.create(name.value,date.value)){refreshTraining();location.reload();}};
+    box.querySelector('#training-export').onclick=()=>window.KAIROS_TRAININGS.exportCsv();
+    refreshTraining();
+   }
+  }
    const button=document.getElementById('demo-start');
    if(REAL && button)button.disabled=true;
    button?.addEventListener('click',()=>{
