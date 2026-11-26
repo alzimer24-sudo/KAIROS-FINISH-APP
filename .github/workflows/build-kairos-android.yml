@@ -19,6 +19,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
+      - name: Include approved KAIROS icon in Android app
+        run: |
+          mkdir -p android-finish/app/src/main/res/drawable-nodpi
+          cp kairos-icon-512.png android-finish/app/src/main/res/drawable-nodpi/kairos_icon.png
+          cp kairos-icon-512.png android-finish/app/src/main/assets/kairos-icon-512.png
       - name: Build Android debug APK
         run: gradle -p android-finish --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
