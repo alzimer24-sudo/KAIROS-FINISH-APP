@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { configured, supabase } from './supabase';
+import AdminGroups from './AdminGroups';
 
 type Group = { id:string; name:string; organization_id:string };
 type Training = { id:string; group_id:string; title:string; started_on:string; discipline:string|null };
@@ -33,11 +34,13 @@ export default function App(){
   const [group,setGroup]=useState<Group|null>(null);
   const [training,setTraining]=useState<Training|null>(null);
   const [refresher,setRefresher]=useState(0);
+  const [adminOpen,setAdminOpen]=useState(false);
+  const [adminAllowed,setAdminAllowed]=useState(false);
 
   useEffect(()=>{
     let mounted=true;
     supabase.auth.getSession().then(({data})=>{if(mounted){setSession(data.session);setReady(true);}}).catch(()=>{if(mounted)setReady(true);});
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>{if(mounted){setSession(s);setError('');setGroup(null);setTraining(null);setGroups([]);setTrainings([]);setResults([]);}});
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,s)=>{if(mounted){setSession(s);setError('');setGroup(null);setTraining(null);setGroups([]);setTrainings([]);setResults([]);setAdminOpen(false);}});
     return ()=>{mounted=false;subscription.unsubscribe();};
   },[]);
 
@@ -67,7 +70,15 @@ export default function App(){
     if(r.error)setError('Impossibile caricare la classifica: '+r.error.message);
     else setResults(r.data||[]);
   },[]);
-  useEffect(()=>{if(session && !group)void loadGroups();},[session?.user.id,group,loadGroups]);
+  useEffect(()=>{if(session && !group && !adminOpen)void loadGroups();},[session?.user.id,group,loadGroups,adminOpen]);
+  useEffect(()=>{
+    let active=true;
+    setAdminAllowed(false);
+    if(!session)return ()=>{active=false;};
+    supabase.from('kairos_org_members').select('organization_id').eq('user_id',session.user.id).in('role',['owner','admin']).limit(1)
+      .then(({data,error})=>{if(active)setAdminAllowed(!error && (data?.length||0)>0);});
+    return ()=>{active=false;};
+  },[session?.user.id]);
 
   async function login(){
     if(!configured){setError('Manca la configurazione Supabase. Il proprietario deve collegare il proprio progetto prima di distribuire l’app.');return;}
@@ -106,11 +117,12 @@ export default function App(){
         {error?<Text style={styles.error}>{error}</Text>:null}
         <Text style={styles.footer}>Non è prevista l’iscrizione libera: il responsabile autorizza personalmente ogni account.</Text>
       </ScrollView>
-    </KeyboardAvoidingView>:<View style={{flex:1}}>
+    </KeyboardAvoidingView>:adminOpen?<AdminGroups userId={session.user.id} onBack={()=>{setAdminOpen(false);setRefresher(n=>n+1);}} onChanged={()=>setRefresher(n=>n+1)}/>:<View style={{flex:1}}>
       <View style={styles.account}>
         <Text style={{color:MUTED,flex:1,fontSize:12}} numberOfLines={1}>{session.user.email}</Text>
         <Pressable onPress={()=>void signOut()} disabled={busy}><Text style={{color:CYAN,fontWeight:'700'}}>Esci</Text></Pressable>
       </View>
+      {adminAllowed&&!group?<View style={{paddingHorizontal:20,paddingTop:12}}><Button label="⚙ GESTISCI GRUPPI E UTENTI" secondary onPress={()=>setAdminOpen(true)}/></View>:null}
       {group?<View style={styles.breadcrumb}><Pressable onPress={()=>{setGroup(null);setTraining(null);setTrainings([]);setResults([]);setError('');}}><Text style={styles.link}>‹ GRUPPI</Text></Pressable>{training?<Pressable onPress={()=>{setTraining(null);setResults([]);setError('');}}><Text style={styles.link}>‹ ALLENAMENTI</Text></Pressable>:null}</View>:null}
       <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={CYAN}/>}>
         {!group?<><Text style={styles.title}>I tuoi gruppi</Text><Text style={styles.description}>Visualizzi esclusivamente i gruppi per i quali hai un'autorizzazione attiva.</Text>
