@@ -17,3 +17,7 @@ La sequenza acustica (bip iniziale, quattro brevi -4..-1 e ultimo di **750 ms** 
 **Stato attuale:** sorgente dell'app e workflow di compilazione salvati. Le API `lookup`/`confirm` e il protocollo LoRa bidirezionale devono ancora essere implementati e collaudati sul firmware. L'app NON è quindi pronta per uso sul campo. Nessun firmware originale modificato.
 
 APK di prova da GitHub Actions → KAIROS START Android APK (prova) → Artifacts, dopo compilazione riuscita.
+
+## Estensione interfaccia START (collaudo)
+
+La risposta status include inoltre `link_ok` (booleano, consenso radio fresco), `confirmed_nonce` (nonce della conferma) ed `elapsed_us` (ultimo tempo candidato FINISH in microsecondi, 0 se assente). L'interfaccia mostra VIA LIBERA esclusivamente con `ready=true`, `link_ok=true`, `stage=go`; timeout o errore Wi-Fi riportano STOP. Il verde fisico e l'accettazione del sensore restano responsabilità del firmware, non dell'app. Il firmware deve restituire il nonce della conferma e invalidare ogni consenso scaduto. Nessuna modifica ai firmware in questo aggiornamento.

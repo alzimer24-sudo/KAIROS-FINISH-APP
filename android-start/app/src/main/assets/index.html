@@ -12,7 +12,8 @@ button.green{background:#12e779;border-color:#12e779}.bib{font-size:clamp(78px,2
 .name{font-size:clamp(28px,7vw,46px);font-weight:950;text-align:center;min-height:65px;overflow-wrap:anywhere}
 .state{font-size:24px;font-weight:950;text-align:center;padding:14px;background:#222}.count{font-size:clamp(95px,28vw,175px);font-weight:1000;color:#11f080;text-align:center;line-height:1.1}
 .status{padding:12px;text-align:center;font-size:17px;font-weight:900;border:2px solid #ffe600;background:#181818}
-.note{font-size:14px;line-height:1.5;color:#ffe4a3;background:#382600;border:2px solid #ce9000;border-radius:11px;padding:12px}
+.signal{border:3px solid #f6f6f6;border-radius:14px;padding:16px;margin:0 0 14px;text-align:center;background:#a51b25;color:#fff;font-size:clamp(28px,8vw,48px);font-weight:1000}
+.signal.go{background:#12e779;color:#000}.signal.wait{background:#705000;color:#fff}.result{font-size:clamp(36px,10vw,70px);font-weight:1000;text-align:center;font-variant-numeric:tabular-nums;color:#ffe600}.note{font-size:14px;line-height:1.5;color:#ffe4a3;background:#382600;border:2px solid #ce9000;border-radius:11px;padding:12px}
 </style></head>
 <body><header><h1>KAIROS START</h1><p>OFFLINE · VISIBILITÀ AL SOLE · WI-FI HELTEC</p></header>
 <main>
@@ -23,53 +24,70 @@ button.green{background:#12e779;border-color:#12e779}.bib{font-size:clamp(78px,2
 <div id="selected" class="bib">—</div><div id="name" class="name">ATTESA PETTORALE</div>
 <button id="confirm" class="green" disabled>OK · CONFERMA ATLETA</button>
 </section>
-<section><h2>PARTENZA</h2><div id="state" class="state">ATTESA VIA LIBERA FINISH</div>
+<section><h2>PARTENZA</h2><div id="signal" class="signal" role="status">STOP</div><div id="state" class="state">ATTESA VIA LIBERA FINISH</div>
 <div class="count" id="countdown">—</div>
 <p>Il cicalino e il countdown saranno controllati dal firmware START. Il tempo cronometrico inizia solo al passaggio valido del cancelletto.</p>
 </section>
+<section><h2>ULTIMO TEMPO RICEVUTO DA FINISH</h2><div class="result" id="result">—</div><p id="resultInfo">In attesa di un risultato dalla Heltec.</p></section>
 <div class="note">Puoi cercare il prossimo pettorale mentre il cronometro precedente è in corso. Nessun evento casuale deve diventare una partenza senza il consenso della FINISH. Questa versione richiede firmware compatibile, non ancora collaudato.</div>
 </main>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-let bib=0,nonce=0,found=false,confirmed=false,lastPoll=0;
+let bib=0,nonce=0,found=false,confirmed=false,connected=false,lastPoll=0;
+function stopSignal(label){$('signal').className='signal';$('signal').textContent='STOP';$('state').textContent=label;$('countdown').textContent='—';}
+function controls(){ $('search').disabled=!connected; $('confirm').disabled=!connected||!found||confirmed; }
+controls();
 function request(action,b,n){if(window.KairosStart)KairosStart.request(action,String(b||''),String(n||''));}
 window.KAIROS_ONERROR=function(message){
  $('connection').textContent='HELTEC NON COLLEGATA: '+String(message).slice(0,100);
- $('state').textContent='ATTESA COLLEGAMENTO';
+ connected=false;controls();stopSignal('ATTESA COLLEGAMENTO');
+ $('resultInfo').textContent='Collegamento perso: il tempo eventualmente mostrato non è aggiornato.';
 };
 window.KAIROS_ONDATA=function(raw){
  let d;try{d=JSON.parse(raw);}catch(_){return;}
- $('connection').textContent=d.ready?'HELTEC START COLLEGATA':'HELTEC NON PRONTA';
+ lastPoll=Date.now();connected=true;
+ $('connection').textContent=d.ready===true?'HELTEC START COLLEGATA':'HELTEC COLLEGATA · NON PRONTA';
  if(d.lookup && Number(d.lookup.nonce)===nonce && Number(d.lookup.bib)===bib){
   if(d.lookup.status==='found'){
    found=true;$('name').textContent=String(d.lookup.name||'ATLETA TROVATO').slice(0,100);
-   if(!confirmed)$('confirm').disabled=false;
+   controls();
   }else if(d.lookup.status==='not_found'){
    found=false;$('name').textContent='PETTORALE NON TROVATO';$('confirm').disabled=true;
   }
  }
- if(bib>0 && d.confirmed_bib!=null && Number(d.confirmed_bib)===bib){
+ if(bib>0 && found && Number(d.confirmed_bib)===bib && Number(d.confirmed_nonce)===nonce){
   confirmed=true;$('confirm').disabled=true;
   $('name').textContent=$('name').textContent.replace(/ ✓$/,'')+' ✓';
  }
  const states={idle:'ATTESA',locked:'ATLETA IN PISTA · BLOCCATO',ready:'PRONTO · ATTENDE FINISH',
   countdown:'COUNTDOWN',go:'VIA',sent:'PARTENZA TRASMESSA'};
- $('state').textContent=states[d.stage]||'ATTESA FINISH';
- $('countdown').textContent=d.stage==='countdown'?String(d.remaining_sec??'—'):d.stage==='go'?'VIA':'—';
+ const go=d.ready===true&&d.link_ok===true&&d.stage==='go';
+ const countdown=d.ready===true&&d.link_ok===true&&d.stage==='countdown';
+ $('signal').className=go?'signal go':countdown?'signal wait':'signal';
+ $('signal').textContent=go?'VIA LIBERA':countdown?'ATTENDI':'STOP';
+ $('state').textContent=d.link_ok!==true?'ATTESA COLLEGAMENTO FINISH':d.ready!==true?'SINCRONIZZAZIONE NON PRONTA':(states[d.stage]||'ATTESA FINISH');
+ $('countdown').textContent=countdown&&Number.isInteger(d.remaining_sec)&&d.remaining_sec>=0?String(d.remaining_sec):go?'VIA':'—';
+ if(Number.isSafeInteger(d.elapsed_us)&&d.elapsed_us>0){
+  $('result').textContent=(d.elapsed_us/1000000).toFixed(3)+' s';
+  $('resultInfo').textContent='Ultimo tempo candidato FINISH · precisione da verificare';
+ }else{$('result').textContent='—';$('resultInfo').textContent='In attesa di un risultato dalla Heltec.';}
+ controls();
 };
 $('search').onclick=function(){
+ if(!connected)return;
  const n=Number($('bib').value);
  if(!Number.isSafeInteger(n)||n<1||n>99999){alert('Pettorale non valido');return;}
  bib=n;nonce=Date.now()%1000000000;found=false;confirmed=false;
  $('confirm').disabled=true;$('selected').textContent=String(bib);
  $('name').textContent='RICERCA SU FINISH...';request('lookup',bib,nonce);
 };
-$('confirm').onclick=function(){if(!found||confirmed)return;
+$('confirm').onclick=function(){if(!connected||!found||confirmed)return;
  $('confirm').disabled=true;request('confirm',bib,nonce);
 };
 setInterval(()=>request('status'),1200);
+setInterval(()=>{if(connected&&Date.now()-lastPoll>4000)window.KAIROS_ONERROR('Risposta scaduta');},500);
 request('status');
 })();
 </script></body></html>
