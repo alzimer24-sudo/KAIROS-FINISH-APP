@@ -1,0 +1,14 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'it.kairos.finish'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'it.kairos.finish'
+        minSdk 24
+        targetSdk 34
+        versionCode 12
+        versionName '12.0-test'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+    buildTypes { release { minifyEnabled false } }
+}
