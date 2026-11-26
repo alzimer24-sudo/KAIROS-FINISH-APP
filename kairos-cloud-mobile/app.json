@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "KAIROS CLOUD",
+    "slug": "kairos-cloud",
+    "scheme": "kairoscloud",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "../kairos-icon-512.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "it.kairos.cloud"
+    },
+    "android": {
+      "package": "it.kairos.cloud",
+      "adaptiveIcon": {
+        "foregroundImage": "../kairos-icon-512.png",
+        "backgroundColor": "#06182b"
+      }
+    },
+    "extra": {
+      "appVariant": "private-viewer"
+    }
+  }
+}
