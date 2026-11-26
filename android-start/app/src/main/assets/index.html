@@ -2,92 +2,88 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#050505"><title>KAIROS START</title>
 <style>
-*{box-sizing:border-box}html{font-family:system-ui,Roboto,Arial,sans-serif;background:#050505;color:#fff}body{margin:0;background:#050505;color:white}
-header{padding:16px;background:#101010;border-bottom:4px solid #ffe600}h1{margin:0;font-size:28px}header p{margin:4px 0 0;color:#ffe600;font-size:12px;font-weight:900}
-main{padding:12px;max-width:700px;margin:auto}section{background:#101010;border:3px solid #f6f6f6;border-radius:17px;padding:15px;margin:14px 0}
-h2{font-size:18px;color:#ffe600;margin:0 0 12px}button,input{width:100%;min-height:68px;border-radius:12px;font:inherit;touch-action:manipulation}
-input{border:3px solid #fff;background:#000;color:#fff;font-size:42px;font-weight:900;text-align:center}
-button{margin-top:12px;background:#ffe600;color:#000;border:3px solid #ffe600;font-size:22px;font-weight:950}button:disabled{background:#444;border-color:#666;color:#ccc}
-button.green{background:#12e779;border-color:#12e779}.bib{font-size:clamp(78px,24vw,160px);line-height:1.05;color:#ffe600;font-weight:1000;text-align:center}
-.name{font-size:clamp(28px,7vw,46px);font-weight:950;text-align:center;min-height:65px;overflow-wrap:anywhere}
-.state{font-size:24px;font-weight:950;text-align:center;padding:14px;background:#222}.count{font-size:clamp(95px,28vw,175px);font-weight:1000;color:#11f080;text-align:center;line-height:1.1}
-.status{padding:12px;text-align:center;font-size:17px;font-weight:900;border:2px solid #ffe600;background:#181818}
-.signal{border:3px solid #f6f6f6;border-radius:14px;padding:16px;margin:0 0 14px;text-align:center;background:#a51b25;color:#fff;font-size:clamp(28px,8vw,48px);font-weight:1000}
-.signal.go{background:#12e779;color:#000}.signal.wait{background:#705000;color:#fff}.result{font-size:clamp(36px,10vw,70px);font-weight:1000;text-align:center;font-variant-numeric:tabular-nums;color:#ffe600}.note{font-size:14px;line-height:1.5;color:#ffe4a3;background:#382600;border:2px solid #ce9000;border-radius:11px;padding:12px}
-</style></head>
-<body><header><h1>KAIROS START</h1><p>OFFLINE · VISIBILITÀ AL SOLE · WI-FI HELTEC</p></header>
+*{box-sizing:border-box}html{font-family:system-ui,Roboto,Arial,sans-serif;background:#050505;color:#fff}body{margin:0}
+header{padding:9px 12px;border-bottom:3px solid #ffe600;display:flex;align-items:center;justify-content:space-between;gap:8px}h1{margin:0;font-size:21px}
+main{padding:8px;max-width:700px;margin:auto}section{background:#101010;border:2px solid #fff;border-radius:14px;padding:10px;margin:8px 0}
+h2{font-size:15px;color:#ffe600;margin:0 0 7px}button,input{width:100%;min-height:50px;border-radius:10px;font:inherit;touch-action:manipulation}
+input{border:2px solid #fff;background:#000;color:#fff;font-size:36px;font-weight:900;text-align:center}
+button{margin-top:7px;background:#ffe600;color:#000;border:2px solid #ffe600;font-size:18px;font-weight:900}
+button.green{background:#12e779;border-color:#fff;color:#000}button:disabled,button.green:disabled{background:#444;border-color:#777;color:#fff}
+.athlete{margin-top:8px;border:2px solid #ffe600;border-radius:10px;padding:8px;background:#000;text-align:center}
+.label{font-size:13px;color:#ffe600;font-weight:900}.name{font-size:clamp(24px,7vw,40px);font-weight:950;overflow-wrap:anywhere;min-height:32px}.athlete-status{font-size:13px;color:#ffe600;font-weight:800}
+.status{font-size:12px;font-weight:800;color:#ffdb56;text-align:right}.status.ok{color:#7df6ad}
+.signal{border:2px solid #fff;border-radius:10px;padding:10px;text-align:center;background:#a51b25;color:#fff;font-size:clamp(32px,9vw,54px);font-weight:1000;line-height:1.1}
+.signal.go{background:#12e779;color:#000}.signal.wait{background:#705000;color:#fff}
+.state{text-align:center;font-size:15px;font-weight:850;margin-top:5px}.count{font-size:clamp(60px,20vw,120px);font-weight:1000;color:#ffe600;text-align:center;line-height:1.05}.count:empty{display:none}
+.result{font-size:clamp(32px,9vw,64px);font-weight:1000;text-align:center;font-variant-numeric:tabular-nums}.resultInfo{text-align:center;font-size:12px;color:#ffe600;margin:2px 0}
+</style></head><body>
+<header><h1>KAIROS START</h1><span class="status" id="connection" role="status">SCOLLEGATO</span></header>
 <main>
-<div class="status" id="connection" role="status">COLLEGA IL WI-FI KAIROS-START</div>
 <section><h2>PROSSIMO PETTORALE</h2>
 <input id="bib" type="number" inputmode="numeric" min="1" max="99999" placeholder="000" aria-label="Pettorale">
-<button id="search">CERCA SU FINISH</button>
-<div id="selected" class="bib">—</div><div id="name" class="name">ATTESA PETTORALE</div>
-<button id="confirm" class="green" disabled>OK · CONFERMA ATLETA</button>
+<button id="search" disabled>CERCA ATLETA</button>
+<div class="athlete"><div class="label">NOME ATLETA</div><div id="name" class="name" aria-live="polite">—</div><div id="athleteStatus" class="athlete-status">ATTESA PETTORALE</div></div>
+<button id="confirm" class="green" disabled>CONFERMA ATLETA</button>
 </section>
-<section><h2>PARTENZA</h2><div id="signal" class="signal" role="status">STOP</div><div id="state" class="state">ATTESA VIA LIBERA FINISH</div>
-<div class="count" id="countdown">—</div>
-<p>Il cicalino e il countdown saranno controllati dal firmware START. Il tempo cronometrico inizia solo al passaggio valido del cancelletto.</p>
-</section>
-<section><h2>ULTIMO TEMPO RICEVUTO DA FINISH</h2><div class="result" id="result">—</div><p id="resultInfo">In attesa di un risultato dalla Heltec.</p></section>
-<div class="note">Puoi cercare il prossimo pettorale mentre il cronometro precedente è in corso. Nessun evento casuale deve diventare una partenza senza il consenso della FINISH. Questa versione richiede firmware compatibile, non ancora collaudato.</div>
+<section><h2>PARTENZA</h2><div id="signal" class="signal" role="status">STOP</div><div id="state" class="state">ATTESA COLLEGAMENTO</div><div class="count" id="countdown"></div></section>
+<section><h2>ULTIMO TEMPO</h2><div class="result" id="result">—</div><p class="resultInfo" id="resultInfo">Tempo di prova</p></section>
 </main>
 <script>
 (function(){
 'use strict';
 const $=id=>document.getElementById(id);
-let bib=0,nonce=0,found=false,confirmed=false,connected=false,lastPoll=0;
-function stopSignal(label){$('signal').className='signal';$('signal').textContent='STOP';$('state').textContent=label;$('countdown').textContent='—';}
-function controls(){ $('search').disabled=!connected; $('confirm').disabled=!connected||!found||confirmed; }
-controls();
+let bib=0,nonce=0,found=false,confirmed=false,confirmPending=false,confirmAt=0,connected=false,link=false,lastPoll=0;
+function stopSignal(label){$('signal').className='signal';$('signal').textContent='STOP';$('state').textContent=label;$('countdown').textContent='';}
+function controls(){ $('search').disabled=!connected||!link; $('confirm').disabled=!connected||!link||!found||confirmed||confirmPending; }
+function clearAthlete(label){bib=0;nonce=0;found=false;confirmed=false;confirmPending=false;$('name').textContent='—';$('athleteStatus').textContent=label;controls();}
 function request(action,b,n){if(window.KairosStart)KairosStart.request(action,String(b||''),String(n||''));}
 window.KAIROS_ONERROR=function(message){
- $('connection').textContent='HELTEC NON COLLEGATA: '+String(message).slice(0,100);
- connected=false;controls();stopSignal('ATTESA COLLEGAMENTO');
- $('resultInfo').textContent='Collegamento perso: il tempo eventualmente mostrato non è aggiornato.';
+ $('connection').className='status';$('connection').textContent='SCOLLEGATO';
+ connected=false;link=false;clearAthlete('ATTESA COLLEGAMENTO');stopSignal('ATTESA COLLEGAMENTO');
+ $('resultInfo').textContent='Tempo non aggiornato';
 };
 window.KAIROS_ONDATA=function(raw){
- let d;try{d=JSON.parse(raw);}catch(_){return;}
- lastPoll=Date.now();connected=true;
- $('connection').textContent=d.ready===true?'HELTEC START COLLEGATA':'HELTEC COLLEGATA · NON PRONTA';
- if(d.lookup && Number(d.lookup.nonce)===nonce && Number(d.lookup.bib)===bib){
-  if(d.lookup.status==='found'){
-   found=true;$('name').textContent=String(d.lookup.name||'ATLETA TROVATO').slice(0,100);
-   controls();
+ let d;try{d=JSON.parse(raw);}catch(_){window.KAIROS_ONERROR('Formato errato');return;}
+ if(!d||typeof d.ready!=='boolean'){window.KAIROS_ONERROR('Formato errato');return;}
+ lastPoll=Date.now();connected=true;link=d.link_ok===true;
+ $('connection').className=link?'status ok':'status';$('connection').textContent=link?'COLLEGATO':'ATTESA FINISH';
+ if(!link){clearAthlete('ATTESA FINISH');}
+ else if(bib>0&&d.lookup&&Number(d.lookup.nonce)===nonce&&Number(d.lookup.bib)===bib){
+  if(d.lookup.status==='found'&&typeof d.lookup.name==='string'&&d.lookup.name.trim()){
+   found=true;$('name').textContent=d.lookup.name.slice(0,100);
+   $('athleteStatus').textContent=confirmed?'ATLETA CONFERMATO':confirmPending?'CONFERMA IN CORSO':'ATLETA TROVATO';
   }else if(d.lookup.status==='not_found'){
-   found=false;$('name').textContent='PETTORALE NON TROVATO';$('confirm').disabled=true;
+   found=false;confirmed=false;confirmPending=false;$('name').textContent='—';$('athleteStatus').textContent='PETTORALE NON TROVATO';
   }
  }
- if(bib>0 && found && Number(d.confirmed_bib)===bib && Number(d.confirmed_nonce)===nonce){
-  confirmed=true;$('confirm').disabled=true;
-  $('name').textContent=$('name').textContent.replace(/ ✓$/,'')+' ✓';
+ if(link&&bib>0&&found){
+  if(Number(d.confirmed_bib)===bib&&Number(d.confirmed_nonce)===nonce){confirmed=true;confirmPending=false;$('athleteStatus').textContent='✓ ATLETA CONFERMATO';}
+  else if(confirmed){confirmed=false;$('athleteStatus').textContent='ATLETA TROVATO';}
  }
- const states={idle:'ATTESA',locked:'ATLETA IN PISTA · BLOCCATO',ready:'PRONTO · ATTENDE FINISH',
-  countdown:'COUNTDOWN',go:'VIA',sent:'PARTENZA TRASMESSA'};
- const go=d.ready===true&&d.link_ok===true&&d.stage==='go';
- const countdown=d.ready===true&&d.link_ok===true&&d.stage==='countdown';
+ const states={idle:'ATTESA',locked:'ATLETA IN PISTA',ready:'ATTESA VIA LIBERA',countdown:'PREPARARSI',go:'PARTENZA AUTORIZZATA',sent:'PARTENZA TRASMESSA'};
+ const go=d.ready===true&&link&&d.stage==='go';
+ const countdown=d.ready===true&&link&&d.stage==='countdown';
  $('signal').className=go?'signal go':countdown?'signal wait':'signal';
- $('signal').textContent=go?'VIA LIBERA':countdown?'ATTENDI':'STOP';
- $('state').textContent=d.link_ok!==true?'ATTESA COLLEGAMENTO FINISH':d.ready!==true?'SINCRONIZZAZIONE NON PRONTA':(states[d.stage]||'ATTESA FINISH');
- $('countdown').textContent=countdown&&Number.isInteger(d.remaining_sec)&&d.remaining_sec>=0?String(d.remaining_sec):go?'VIA':'—';
- if(Number.isSafeInteger(d.elapsed_us)&&d.elapsed_us>0){
-  $('result').textContent=(d.elapsed_us/1000000).toFixed(3)+' s';
-  $('resultInfo').textContent='Ultimo tempo candidato FINISH · precisione da verificare';
- }else{$('result').textContent='—';$('resultInfo').textContent='In attesa di un risultato dalla Heltec.';}
+ $('signal').textContent=go?'VIA':countdown?'ATTENDI':'STOP';
+ $('state').textContent=!link?'ATTESA FINISH':!d.ready?'NON PRONTO':(states[d.stage]||'ATTESA FINISH');
+ $('countdown').textContent=countdown&&Number.isInteger(d.remaining_sec)&&d.remaining_sec>=0?String(d.remaining_sec):'';
+ if(Number.isSafeInteger(d.elapsed_us)&&d.elapsed_us>0){$('result').textContent=(d.elapsed_us/1000000).toFixed(3)+' s';$('resultInfo').textContent=link?'Tempo di prova':'Ultimo dato ricevuto';}
+ else{$('result').textContent='—';$('resultInfo').textContent='Tempo di prova';}
  controls();
 };
+$('bib').addEventListener('input',()=>clearAthlete('PREMI CERCA ATLETA'));
 $('search').onclick=function(){
- if(!connected)return;
- const n=Number($('bib').value);
- if(!Number.isSafeInteger(n)||n<1||n>99999){alert('Pettorale non valido');return;}
- bib=n;nonce=Date.now()%1000000000;found=false;confirmed=false;
- $('confirm').disabled=true;$('selected').textContent=String(bib);
- $('name').textContent='RICERCA SU FINISH...';request('lookup',bib,nonce);
+ if(!connected||!link)return;
+ const n=Number($('bib').value);if(!Number.isSafeInteger(n)||n<1||n>99999){alert('Pettorale non valido');return;}
+ bib=n;nonce=Date.now()%1000000000||1;found=false;confirmed=false;confirmPending=false;
+ $('name').textContent='—';$('athleteStatus').textContent='RICERCA IN CORSO';controls();request('lookup',bib,nonce);$('bib').blur();
 };
-$('confirm').onclick=function(){if(!connected||!found||confirmed)return;
- $('confirm').disabled=true;request('confirm',bib,nonce);
+$('confirm').onclick=function(){
+ if(!connected||!link||!found||confirmed||confirmPending)return;
+ confirmPending=true;confirmAt=Date.now();controls();$('athleteStatus').textContent='CONFERMA IN CORSO';request('confirm',bib,nonce);
 };
 setInterval(()=>request('status'),1200);
-setInterval(()=>{if(connected&&Date.now()-lastPoll>4000)window.KAIROS_ONERROR('Risposta scaduta');},500);
+setInterval(()=>{if(connected&&Date.now()-lastPoll>4000)window.KAIROS_ONERROR('Risposta scaduta');if(confirmPending&&Date.now()-confirmAt>6000){confirmPending=false;$('athleteStatus').textContent='CONFERMA NON RICEVUTA';controls();}},500);
 request('status');
 })();
 </script></body></html>
