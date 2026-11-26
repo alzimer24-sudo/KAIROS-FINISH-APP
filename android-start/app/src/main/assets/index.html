@@ -1,0 +1,75 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050505"><title>KAIROS START</title>
+<style>
+*{box-sizing:border-box}html{font-family:system-ui,Roboto,Arial,sans-serif;background:#050505;color:#fff}body{margin:0;background:#050505;color:white}
+header{padding:16px;background:#101010;border-bottom:4px solid #ffe600}h1{margin:0;font-size:28px}header p{margin:4px 0 0;color:#ffe600;font-size:12px;font-weight:900}
+main{padding:12px;max-width:700px;margin:auto}section{background:#101010;border:3px solid #f6f6f6;border-radius:17px;padding:15px;margin:14px 0}
+h2{font-size:18px;color:#ffe600;margin:0 0 12px}button,input{width:100%;min-height:68px;border-radius:12px;font:inherit;touch-action:manipulation}
+input{border:3px solid #fff;background:#000;color:#fff;font-size:42px;font-weight:900;text-align:center}
+button{margin-top:12px;background:#ffe600;color:#000;border:3px solid #ffe600;font-size:22px;font-weight:950}button:disabled{background:#444;border-color:#666;color:#ccc}
+button.green{background:#12e779;border-color:#12e779}.bib{font-size:clamp(78px,24vw,160px);line-height:1.05;color:#ffe600;font-weight:1000;text-align:center}
+.name{font-size:clamp(28px,7vw,46px);font-weight:950;text-align:center;min-height:65px;overflow-wrap:anywhere}
+.state{font-size:24px;font-weight:950;text-align:center;padding:14px;background:#222}.count{font-size:clamp(95px,28vw,175px);font-weight:1000;color:#11f080;text-align:center;line-height:1.1}
+.status{padding:12px;text-align:center;font-size:17px;font-weight:900;border:2px solid #ffe600;background:#181818}
+.note{font-size:14px;line-height:1.5;color:#ffe4a3;background:#382600;border:2px solid #ce9000;border-radius:11px;padding:12px}
+</style></head>
+<body><header><h1>KAIROS START</h1><p>OFFLINE · VISIBILITÀ AL SOLE · WI-FI HELTEC</p></header>
+<main>
+<div class="status" id="connection" role="status">COLLEGA IL WI-FI KAIROS-START</div>
+<section><h2>PROSSIMO PETTORALE</h2>
+<input id="bib" type="number" inputmode="numeric" min="1" max="99999" placeholder="000" aria-label="Pettorale">
+<button id="search">CERCA SU FINISH</button>
+<div id="selected" class="bib">—</div><div id="name" class="name">ATTESA PETTORALE</div>
+<button id="confirm" class="green" disabled>OK · CONFERMA ATLETA</button>
+</section>
+<section><h2>PARTENZA</h2><div id="state" class="state">ATTESA VIA LIBERA FINISH</div>
+<div class="count" id="countdown">—</div>
+<p>Il cicalino e il countdown saranno controllati dal firmware START. Il tempo cronometrico inizia solo al passaggio valido del cancelletto.</p>
+</section>
+<div class="note">Puoi cercare il prossimo pettorale mentre il cronometro precedente è in corso. Nessun evento casuale deve diventare una partenza senza il consenso della FINISH. Questa versione richiede firmware compatibile, non ancora collaudato.</div>
+</main>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+let bib=0,nonce=0,found=false,confirmed=false,lastPoll=0;
+function request(action,b,n){if(window.KairosStart)KairosStart.request(action,String(b||''),String(n||''));}
+window.KAIROS_ONERROR=function(message){
+ $('connection').textContent='HELTEC NON COLLEGATA: '+String(message).slice(0,100);
+ $('state').textContent='ATTESA COLLEGAMENTO';
+};
+window.KAIROS_ONDATA=function(raw){
+ let d;try{d=JSON.parse(raw);}catch(_){return;}
+ $('connection').textContent=d.ready?'HELTEC START COLLEGATA':'HELTEC NON PRONTA';
+ if(d.lookup && Number(d.lookup.nonce)===nonce && Number(d.lookup.bib)===bib){
+  if(d.lookup.status==='found'){
+   found=true;$('name').textContent=String(d.lookup.name||'ATLETA TROVATO').slice(0,100);
+   if(!confirmed)$('confirm').disabled=false;
+  }else if(d.lookup.status==='not_found'){
+   found=false;$('name').textContent='PETTORALE NON TROVATO';$('confirm').disabled=true;
+  }
+ }
+ if(bib>0 && d.confirmed_bib!=null && Number(d.confirmed_bib)===bib){
+  confirmed=true;$('confirm').disabled=true;
+  $('name').textContent=$('name').textContent.replace(/ ✓$/,'')+' ✓';
+ }
+ const states={idle:'ATTESA',locked:'ATLETA IN PISTA · BLOCCATO',ready:'PRONTO · ATTENDE FINISH',
+  countdown:'COUNTDOWN',go:'VIA',sent:'PARTENZA TRASMESSA'};
+ $('state').textContent=states[d.stage]||'ATTESA FINISH';
+ $('countdown').textContent=d.stage==='countdown'?String(d.remaining_sec??'—'):d.stage==='go'?'VIA':'—';
+};
+$('search').onclick=function(){
+ const n=Number($('bib').value);
+ if(!Number.isSafeInteger(n)||n<1||n>99999){alert('Pettorale non valido');return;}
+ bib=n;nonce=Date.now()%1000000000;found=false;confirmed=false;
+ $('confirm').disabled=true;$('selected').textContent=String(bib);
+ $('name').textContent='RICERCA SU FINISH...';request('lookup',bib,nonce);
+};
+$('confirm').onclick=function(){if(!found||confirmed)return;
+ $('confirm').disabled=true;request('confirm',bib,nonce);
+};
+setInterval(()=>request('status'),1200);
+request('status');
+})();
+</script></body></html>
