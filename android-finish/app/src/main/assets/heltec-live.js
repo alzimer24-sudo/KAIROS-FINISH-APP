@@ -7,7 +7,7 @@
   connected:false,state:null,pendingUs:null,ready:false,recorded:false,
   activeRunId:null,seenStart:false,startAtMs:null,lastSeenAt:0,lastError:'',bib:null
  };
- let lastNativeState=null,select,view,sub,controlBusy=false,permitView,confirmed=null;
+ let screen,liveUs=0; let lastNativeState=null,select,view,sub,controlBusy=false,permitView,confirmed=null;
  const control=(endpoint,body='')=>window.AndroidHeltec.requestControl(endpoint,body);
  window.KAIROS_CONTROL=function(raw){try{const r=JSON.parse(raw);controlBusy=false;if(r.status!==200){if(permitView)permitView.textContent='Comando o lettura non confermati';return;}const d=JSON.parse(r.data);if(r.endpoint==='lookup'&&!r.post){if(d.pending){const a=M.roster().find(a=>Number(a.bib)===d.bib);controlBusy=true;control('lookup',new URLSearchParams({session:d.session,nonce:d.nonce,bib:d.bib,name:a?a.name:''}).toString());}else if(d.confirmed_bib===d.bib&&d.confirmed_nonce===d.nonce&&d.bib){confirmed=d.bib;if(H.state!==1)H.bib=confirmed;}}if(r.endpoint==='training'&&!r.post&&permitView)permitView.textContent=d.permit?'Consenso FINISH attivo (ricezione START da verificare)':'STOP FINISH';}catch(e){controlBusy=false;}};
  const fmt=us=>{
@@ -15,7 +15,7 @@
   return Math.floor(cs/6000)+':'+String(Math.floor(cs/100)%60).padStart(2,'0')+'.'+String(cs%100).padStart(2,'0');
  };
  function setView(){
-  if (!view)return;
+  if(screen)renderDisplay(); if (!view)return;
   if (!H.connected){
    view.textContent='HELTEC NON COLLEGATA · collega Wi-Fi KAIROS-FINISH';
   }else if(H.state===0){
@@ -28,6 +28,24 @@
    view.textContent='ARRIVO NON VALIDO · verifica sincronizzazione GPS/PPS';
   }
   if(sub)sub.textContent='Tempo concluso: Heltec FINISH via Wi-Fi. Precisione GPS/PPS non certificata. Pettorale da conferma LoRa.';
+ }
+ function renderDisplay(){
+  if(!screen)return;
+  const put=(id,v)=>{screen.querySelector('#'+id).textContent=v;};
+  const bib=H.state===1?H.bib:confirmed;
+  const a=M.roster().find(a=>Number(a.bib)===bib);
+  put('kd-link',H.connected?'HELTEC FINISH COLLEGATA':'HELTEC NON COLLEGATA');
+  put('kd-label',H.state===1?'ATLETA IN PISTA':H.state===3?'ARRIVO NON VALIDO':'PROSSIMO ATLETA');
+  put('kd-athlete',a?bib+' · '+a.name:'—');
+  put('kd-time',H.state===1||H.state===2?fmt(liveUs).padStart(8,'0'):'00:00.00');
+  const runs=M.runs().filter(r=>r.elapsed_us>0||r.elapsed_ms>0);
+  const last=runs[runs.length-1];
+  put('kd-last',last?last.bib+' · '+last.name+'   '+fmt(last.elapsed_us||last.elapsed_ms*1000):'—');
+  const rank=screen.querySelector('#kd-rank');rank.replaceChildren();
+  const round=last?last.run_no:1;
+  const sorted=runs.filter(r=>r.run_no===round).sort((a,b)=>(a.elapsed_us||a.elapsed_ms*1000)-(b.elapsed_us||b.elapsed_ms*1000));
+  sorted.forEach((r,i)=>{const line=document.createElement('div');line.style.cssText='display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #35435a';const name=document.createElement('span');name.textContent=(i+1)+'. '+r.bib+' · '+r.name;const time=document.createElement('strong');time.textContent=fmt(r.elapsed_us||r.elapsed_ms*1000);line.append(name,time);rank.appendChild(line);});
+  put('kd-permit',permitView?permitView.textContent:'Consenso da verificare');
  }
  function athleteOptions(){
   if(!select)return;
@@ -54,7 +72,7 @@
   let d;try{d=JSON.parse(raw);}catch(_){return;}
   const st=Number(d.state),us=Number(d.us);
   if(![0,1,2,3].includes(st)||!Number.isSafeInteger(us)||us<0)return;
-  H.connected=true;H.lastError='';H.lastSeenAt=Date.now();
+  liveUs=us; H.connected=true;H.lastError='';H.lastSeenAt=Date.now();
   if(st===1 && lastNativeState!==1){
    H.bib=confirmed; H.startAtMs=Date.now()-Math.floor(us/1000);
    H.seenStart=true;H.pendingUs=null;H.ready=false;H.recorded=false;H.activeRunId=null;
@@ -115,6 +133,14 @@
     setView();
    });
   }
+  screen=document.createElement('section');
+  screen.style.cssText='position:fixed;inset:0;z-index:99999;overflow:auto;background:#101b2d;color:#f4f7ff;padding:18px;box-sizing:border-box;font-family:system-ui';
+  screen.innerHTML='<header style="display:flex;justify-content:space-between;align-items:center"><strong>KAIROS · FINISH</strong><button id="kd-manage">Gestione locale</button></header><p id="kd-link" style="font-size:13px"></p><div style="background:#192941;border-radius:16px;padding:20px;text-align:center"><div id="kd-label" style="color:#ffd84d;font-weight:800">ATLETA IN PISTA</div><h2 id="kd-athlete">—</h2><div id="kd-time" style="font-size:clamp(48px,13vw,96px);font-weight:800;font-variant-numeric:tabular-nums">00:00.00</div></div><div style="background:#173a35;border-radius:12px;padding:16px;margin-top:14px"><small>ULTIMO ARRIVO</small><h2 id="kd-last">—</h2></div><h3>Classifica locale</h3><div id="kd-rank"></div><div style="display:flex;gap:12px;margin-top:20px"><button id="kd-stop" style="flex:1;background:#a82935;color:white;padding:18px;border:0;border-radius:10px;font-weight:bold">STOP</button><button id="kd-go" style="flex:1;background:#18784d;color:white;padding:18px;border:0;border-radius:10px;font-weight:bold">CONSENSO</button></div><p id="kd-permit"></p><small>Offline · Archivio locale · GPS/PPS da validare</small>';
+  document.body.appendChild(screen);
+  screen.querySelector('#kd-manage').onclick=()=>{screen.hidden=true;};
+  const back=document.createElement('button');back.textContent='TORNA AL DISPLAY FINISH';back.style.cssText='position:fixed;bottom:8px;right:8px;z-index:99998;padding:12px';back.onclick=()=>{screen.hidden=false;renderDisplay();};document.body.appendChild(back);
+  for(const [id,v] of [['kd-stop',0],['kd-go',1]])screen.querySelector('#'+id).onclick=()=>{if(permitView)permitView.textContent='Comando in attesa';control('training/permit','permit='+v);renderDisplay();};
+  setInterval(renderDisplay,500);
   athleteOptions();setView();
   try{window.AndroidHeltec.requestTempo();}catch(e){window.KAIROS_HELTEC_ONERROR(e.message);}
   setInterval(()=>{athleteOptions();try{window.AndroidHeltec.requestTempo();}catch(e){window.KAIROS_HELTEC_ONERROR(e.message);}},750);
