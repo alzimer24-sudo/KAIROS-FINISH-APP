@@ -107,6 +107,38 @@ public class MainActivity extends Activity {
         }
       });
     }
+    @JavascriptInterface public void requestControl(String endpoint, String body) {
+      if (!endpoint.equals("lookup") && !endpoint.equals("training") && !endpoint.equals("training/permit") && !endpoint.equals("classifica")) return;
+      io.submit(() -> {
+        HttpURLConnection con = null;
+        try {
+          URL url = new URL("http://192.168.4.1/api/" + endpoint);
+          ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+          Network wifi = null;
+          if(cm != null) for(Network net : cm.getAllNetworks()) {
+            NetworkCapabilities cap = cm.getNetworkCapabilities(net);
+            if(cap != null && cap.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) { wifi=net; break; }
+          }
+          if(wifi==null) throw new Exception("Wi-Fi assente");
+          con=(HttpURLConnection)wifi.openConnection(url);
+          con.setConnectTimeout(1400); con.setReadTimeout(1400); con.setUseCaches(false);
+          if(!body.isEmpty()){
+            con.setRequestMethod("POST"); con.setDoOutput(true);
+            con.setRequestProperty("Content-Type","application/x-www-form-urlencoded");
+            try(OutputStream out=con.getOutputStream()){out.write(body.getBytes(StandardCharsets.UTF_8));}
+          }
+          int status=con.getResponseCode();
+          StringBuilder data=new StringBuilder();
+          if(status==200) try(BufferedReader reader=new BufferedReader(new InputStreamReader(con.getInputStream(),StandardCharsets.UTF_8))){
+            for(String line;(line=reader.readLine())!=null;){data.append(line);if(data.length()>40000)throw new Exception("Risposta eccessiva");}
+          }
+          JSONObject result=new JSONObject();result.put("endpoint",endpoint);result.put("post",!body.isEmpty());result.put("status",status);result.put("data",data.toString());
+          sendJs("KAIROS_CONTROL",result.toString());
+        }catch(Exception e){
+          try{JSONObject result=new JSONObject();result.put("endpoint",endpoint);result.put("post",!body.isEmpty());result.put("status",0);sendJs("KAIROS_CONTROL",result.toString());}catch(Exception ignored){}
+        }finally{if(con!=null)con.disconnect();}
+      });
+    }
     @JavascriptInterface public void exportCsv(String filename,String content) {
       runOnUiThread(() -> {
         pendingCsv=content;
