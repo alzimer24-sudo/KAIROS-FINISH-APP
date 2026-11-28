@@ -28,5 +28,5 @@ jobs:
         run: gradle -p android-finish --no-daemon assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: KAIROS-FINISH-V12-TEST-APK
+          name: KAIROS-FINISH-V13-TEST-APK
           path: android-finish/app/build/outputs/apk/debug/app-debug.apk
