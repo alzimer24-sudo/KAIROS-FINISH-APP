@@ -430,7 +430,7 @@ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.
   create(name,date){
    if(!REAL||!safeChange())return false;
    name=String(name||'').trim();if(name.length<2||name.length>120){alert('Nome allenamento: da 2 a 120 caratteri.');return false;}
-   if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||Number.isNaN(Date.parse(date))){alert('Data non valida.');return false;}
+   if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(date)||Number.isNaN(Date.parse(date))||new Date(date).toISOString().slice(0,10)!==date){alert('Data non valida.');return false;}
    if(!archiveSave()){alert('Impossibile salvare l’allenamento attuale.');return false;}
    const t=newTraining(name,date);
    // La lista atleti può essere riutilizzata, i risultati MAI.
